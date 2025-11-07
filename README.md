@@ -128,23 +128,8 @@ This architecture allows you to:
 
 ## Available Raylib Functions
 
-Currently exposed in the `raylib` module:
+See [RAYLIB_API.md](RAYLIB_API.md) for a complete list of all Raylib functions supported by MSRLWeb.  For more details on these functions, see the [official Raylib cheat sheet](https://www.raylib.com/cheatsheet/cheatsheet.html).
 
-**Drawing Functions:**
-- `raylib.BeginDrawing()` - Start drawing
-- `raylib.EndDrawing()` - End drawing
-- `raylib.ClearBackground(color)` - Clear screen with color
-- `raylib.DrawRectangle(x, y, width, height, color)` - Draw rectangle
-
-**Color Constants:**
-- `raylib.WHITE`, `raylib.BLACK`, `raylib.RED`, `raylib.GREEN`, `raylib.BLUE`
-- `raylib.YELLOW`, `raylib.ORANGE`, `raylib.PINK`, `raylib.MAGENTA`
-- `raylib.RAYWHITE`, `raylib.GRAY`, `raylib.DARKGRAY`, `raylib.LIGHTGRAY`
-- `raylib.SKYBLUE`, `raylib.DARKBLUE`
-
-Colors are maps with `r`, `g`, `b`, `a` components (0-255).
-
-Many more RayLib functions will be coming soon!
 
 ## Example MiniScript Code
 
