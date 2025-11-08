@@ -30,6 +30,10 @@ Thumbs.db
 # Symlinks (user must create these)
 raylib
 
+# Personal notes (keep local only)
+Notes/
+
 # Don't ignore custom files
 !shell.html
 !prevent-defaults.js
+!index.html
