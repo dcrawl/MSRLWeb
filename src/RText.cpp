@@ -7,13 +7,68 @@
 
 #include "RaylibIntrinsics.h"
 #include "RaylibTypes.h"
+#include "RawData.h"
 #include "raylib.h"
 #include "MiniscriptInterpreter.h"
 #include "MiniscriptTypes.h"
+#include "UnicodeUtil.h"
 
 using namespace MiniScript;
 
 #define INTRINSIC_LAMBDA [](Context *context, IntrinsicResult partialResult) -> IntrinsicResult
+
+// Helper function to extract codepoints from either a list of ints or a UTF-8 string
+// Returns allocated int array of codepoints, or nullptr if value is null
+// Sets codepointCount to the number of codepoints
+// Caller must delete[] the returned array
+static int* GetCodepointsFromValue(Value value, int* codepointCount) {
+	*codepointCount = 0;
+
+	if (value.type == ValueType::Null) {
+		return nullptr;
+	}
+
+	if (value.type == ValueType::String) {
+		// Use MiniScript's UTF-8 utilities to parse the string
+		String str = value.ToString();
+		int count = str.Length();  // Character count in the string
+		if (count == 0) {
+			*codepointCount = 0;
+			return nullptr;
+		}
+
+		// Allocate buffer for codepoints
+		int* codepoints = new int[count];
+
+		// Iterate over UTF-8 string and decode each codepoint
+		unsigned char* ptr = (unsigned char*)str.data();
+		for (int i = 0; i < count; i++) {
+			codepoints[i] = (int)UTF8DecodeAndAdvance(&ptr);
+		}
+
+		*codepointCount = count;
+		return codepoints;
+	}
+
+	if (value.type == ValueType::List) {
+		ValueList list = value.GetList();
+		int count = list.Count();
+		if (count == 0) {
+			*codepointCount = 0;
+			return nullptr;
+		}
+
+		int* codepoints = new int[count];
+		for (int i = 0; i < count; i++) {
+			codepoints[i] = list[i].IntValue();
+		}
+
+		*codepointCount = count;
+		return codepoints;
+	}
+
+	return nullptr;
+}
 
 void AddRTextMethods(ValueDict raylibModule) {
 	Intrinsic *i;
@@ -38,8 +93,16 @@ void AddRTextMethods(ValueDict raylibModule) {
 	i->code = INTRINSIC_LAMBDA {
 		String path = context->GetVar(String("fileName")).ToString();
 		int fontSize = context->GetVar(String("fontSize")).IntValue();
-		// For now, ignore codepoints parameter and load all
-		Font font = LoadFontEx(path.c_str(), fontSize, nullptr, 0);
+		Value codepointsVal = context->GetVar(String("codepoints"));
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int codepointCount = 0;
+		int* codepoints = GetCodepointsFromValue(codepointsVal, &codepointCount);
+
+		Font font = LoadFontEx(path.c_str(), fontSize, codepoints, codepointCount);
+
+		if (codepoints) delete[] codepoints;
+
 		if (!IsFontValid(font)) return IntrinsicResult::Null;
 		return IntrinsicResult(FontToValue(font));
 	};
@@ -217,4 +280,399 @@ void AddRTextMethods(ValueDict raylibModule) {
 		return IntrinsicResult(Value(index));
 	};
 	raylibModule.SetValue("GetGlyphIndex", i->GetFunc());
+
+	// Additional font and text functions
+
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		Font font = GetFontDefault();
+		return IntrinsicResult(FontToValue(font));
+	};
+	raylibModule.SetValue("GetFontDefault", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("spacing");
+	i->code = INTRINSIC_LAMBDA {
+		int spacing = context->GetVar(String("spacing")).IntValue();
+		SetTextLineSpacing(spacing);
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("SetTextLineSpacing", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("font");
+	i->AddParam("codepoint");
+	i->code = INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context->GetVar(String("font")));
+		int codepoint = context->GetVar(String("codepoint")).IntValue();
+		Rectangle rec = GetGlyphAtlasRec(font, codepoint);
+		return IntrinsicResult(RectangleToValue(rec));
+	};
+	raylibModule.SetValue("GetGlyphAtlasRec", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("font");
+	i->AddParam("codepoint");
+	i->code = INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context->GetVar(String("font")));
+		int codepoint = context->GetVar(String("codepoint")).IntValue();
+		GlyphInfo info = GetGlyphInfo(font, codepoint);
+
+		ValueDict result;
+		result.SetValue(String("value"), Value(info.value));
+		result.SetValue(String("offsetX"), Value(info.offsetX));
+		result.SetValue(String("offsetY"), Value(info.offsetY));
+		result.SetValue(String("advanceX"), Value(info.advanceX));
+		result.SetValue(String("image"), ImageToValue(info.image));
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("GetGlyphInfo", i->GetFunc());
+
+	// UTF-8 and codepoint functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		int count = GetCodepointCount(text.c_str());
+		return IntrinsicResult(Value(count));
+	};
+	raylibModule.SetValue("GetCodepointCount", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("codepointSize", Value::null);
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		int codepointSize = 0;
+		int codepoint = GetCodepoint(text.c_str(), &codepointSize);
+
+		ValueDict result;
+		result.SetValue(String("codepoint"), Value(codepoint));
+		result.SetValue(String("codepointSize"), Value(codepointSize));
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("GetCodepoint", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("codepointSize", Value::null);
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		int codepointSize = 0;
+		int codepoint = GetCodepointNext(text.c_str(), &codepointSize);
+
+		ValueDict result;
+		result.SetValue(String("codepoint"), Value(codepoint));
+		result.SetValue(String("codepointSize"), Value(codepointSize));
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("GetCodepointNext", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("codepointSize", Value::null);
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		int codepointSize = 0;
+		int codepoint = GetCodepointPrevious(text.c_str(), &codepointSize);
+
+		ValueDict result;
+		result.SetValue(String("codepoint"), Value(codepoint));
+		result.SetValue(String("codepointSize"), Value(codepointSize));
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("GetCodepointPrevious", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("codepoint");
+	i->code = INTRINSIC_LAMBDA {
+		int codepoint = context->GetVar(String("codepoint")).IntValue();
+		int utf8Size = 0;
+		const char* utf8 = CodepointToUTF8(codepoint, &utf8Size);
+		return IntrinsicResult(Value(String(utf8, utf8Size)));
+	};
+	raylibModule.SetValue("CodepointToUTF8", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text1");
+	i->AddParam("text2");
+	i->code = INTRINSIC_LAMBDA {
+		String text1 = context->GetVar(String("text1")).ToString();
+		String text2 = context->GetVar(String("text2")).ToString();
+		bool equal = TextIsEqual(text1.c_str(), text2.c_str());
+		return IntrinsicResult(Value(equal));
+	};
+	raylibModule.SetValue("TextIsEqual", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		unsigned int length = TextLength(text.c_str());
+		return IntrinsicResult(Value((int)length));
+	};
+	raylibModule.SetValue("TextLength", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("dst");
+	i->AddParam("src");
+	i->code = INTRINSIC_LAMBDA {
+		String src = context->GetVar(String("src")).ToString();
+		// MiniScript strings are immutable, so we just return the source string
+		// The actual TextCopy in raylib copies to a pre-allocated buffer
+		return IntrinsicResult(Value(src));
+	};
+	raylibModule.SetValue("TextCopy", i->GetFunc());
+
+	// Memory-related functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("fileType");
+	i->AddParam("fileData");
+	i->AddParam("fontSize");
+	i->AddParam("codepoints", Value::null);
+	i->AddParam("codepointCount", Value::zero);
+	i->code = INTRINSIC_LAMBDA {
+		String fileType = context->GetVar(String("fileType")).ToString();
+		BinaryData* data = ValueToRawData(context->GetVar(String("fileData")));
+		if (!data) return IntrinsicResult::Null;
+
+		int fontSize = context->GetVar(String("fontSize")).IntValue();
+		Value codepointsVal = context->GetVar(String("codepoints"));
+		int codepointCount = 0;
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int* codepoints = GetCodepointsFromValue(codepointsVal, &codepointCount);
+
+		Font font = LoadFontFromMemory(fileType.c_str(), data->bytes, data->length, fontSize, codepoints, codepointCount);
+
+		if (codepoints) delete[] codepoints;
+
+		if (!IsFontValid(font)) return IntrinsicResult::Null;
+		return IntrinsicResult(FontToValue(font));
+	};
+	raylibModule.SetValue("LoadFontFromMemory", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("fileData");
+	i->AddParam("fontSize");
+	i->AddParam("codepoints", Value::null);
+	i->AddParam("codepointCount", Value::zero);
+	i->AddParam("type", Value::zero);  // FONT_DEFAULT
+	i->code = INTRINSIC_LAMBDA {
+		BinaryData* data = ValueToRawData(context->GetVar(String("fileData")));
+		if (!data) return IntrinsicResult::Null;
+
+		int fontSize = context->GetVar(String("fontSize")).IntValue();
+		Value codepointsVal = context->GetVar(String("codepoints"));
+		int type = context->GetVar(String("type")).IntValue();
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int codepointCount = 0;
+		int* codepoints = GetCodepointsFromValue(codepointsVal, &codepointCount);
+
+		int glyphCount = 0;
+		GlyphInfo* glyphs = LoadFontData(data->bytes, data->length, fontSize, codepoints, codepointCount, type, &glyphCount);
+
+		if (codepoints) delete[] codepoints;
+
+		// Convert to MiniScript list
+		ValueList result;
+		if (glyphs) {
+			for (int i = 0; i < glyphCount; i++) {
+				ValueDict glyphDict;
+				glyphDict.SetValue(String("value"), Value(glyphs[i].value));
+				glyphDict.SetValue(String("offsetX"), Value(glyphs[i].offsetX));
+				glyphDict.SetValue(String("offsetY"), Value(glyphs[i].offsetY));
+				glyphDict.SetValue(String("advanceX"), Value(glyphs[i].advanceX));
+				glyphDict.SetValue(String("image"), ImageToValue(glyphs[i].image));
+				result.Add(Value(glyphDict));
+			}
+		}
+		return IntrinsicResult(Value(result));
+	};
+	raylibModule.SetValue("LoadFontData", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("glyphs");
+	i->code = INTRINSIC_LAMBDA {
+		// In our implementation, glyphs is a list of dictionaries
+		// We don't need to explicitly free them as MiniScript manages the memory
+		// This is a no-op for our purposes
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("UnloadFontData", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		int count = 0;
+		int* codepoints = LoadCodepoints(text.c_str(), &count);
+
+		// Convert to MiniScript list
+		ValueList result;
+		if (codepoints) {
+			for (int i = 0; i < count; i++) {
+				result.Add(Value(codepoints[i]));
+			}
+			UnloadCodepoints(codepoints);
+		}
+		return IntrinsicResult(Value(result));
+	};
+	raylibModule.SetValue("LoadCodepoints", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("codepoints");
+	i->code = INTRINSIC_LAMBDA {
+		// In our implementation, codepoints is a MiniScript list
+		// We don't need to explicitly free it as MiniScript manages the memory
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("UnloadCodepoints", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("codepoints");
+	i->code = INTRINSIC_LAMBDA {
+		Value codepointsVal = context->GetVar(String("codepoints"));
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int count = 0;
+		int* codepoints = GetCodepointsFromValue(codepointsVal, &count);
+		if (!codepoints || count == 0) return IntrinsicResult(Value(""));
+
+		char* utf8 = LoadUTF8(codepoints, count);
+		String result(utf8);
+		UnloadUTF8(utf8);
+		delete[] codepoints;
+
+		return IntrinsicResult(Value(result));
+	};
+	raylibModule.SetValue("LoadUTF8", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		// In our implementation, text is a MiniScript string
+		// We don't need to explicitly free it as MiniScript manages the memory
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("UnloadUTF8", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("font");
+	i->AddParam("codepoints");
+	i->AddParam("position", Vector2ToValue(Vector2{0, 0}));
+	i->AddParam("fontSize", Value(20));
+	i->AddParam("spacing", Value::zero);
+	i->AddParam("tint", ColorToValue(BLACK));
+	i->code = INTRINSIC_LAMBDA {
+		Font font = ValueToFont(context->GetVar(String("font")));
+		Value codepointsVal = context->GetVar(String("codepoints"));
+		Vector2 position = ValueToVector2(context->GetVar(String("position")));
+		float fontSize = context->GetVar(String("fontSize")).FloatValue();
+		float spacing = context->GetVar(String("spacing")).FloatValue();
+		Color tint = ValueToColor(context->GetVar(String("tint")));
+
+		// Support both list of ints and UTF-8 string for codepoints
+		int count = 0;
+		int* codepoints = GetCodepointsFromValue(codepointsVal, &count);
+		if (!codepoints || count == 0) return IntrinsicResult::Null;
+
+		DrawTextCodepoints(font, codepoints, count, position, fontSize, spacing, tint);
+		delete[] codepoints;
+
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("DrawTextCodepoints", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("glyphs");
+	i->AddParam("glyphRecs");
+	i->AddParam("fontSize");
+	i->AddParam("padding");
+	i->AddParam("packMethod");
+	i->code = INTRINSIC_LAMBDA {
+		ValueList glyphsList = context->GetVar(String("glyphs")).GetList();
+		ValueList recsList = context->GetVar(String("glyphRecs")).GetList();
+		int fontSize = context->GetVar(String("fontSize")).IntValue();
+		int padding = context->GetVar(String("padding")).IntValue();
+		int packMethod = context->GetVar(String("packMethod")).IntValue();
+
+		int glyphCount = glyphsList.Count();
+		if (glyphCount == 0 || glyphCount != recsList.Count()) return IntrinsicResult::Null;
+
+		// Convert lists to arrays
+		GlyphInfo* glyphs = new GlyphInfo[glyphCount];
+		Rectangle* recs = new Rectangle[glyphCount];
+
+		for (int i = 0; i < glyphCount; i++) {
+			ValueDict glyphDict = glyphsList[i].GetDict();
+			glyphs[i].value = glyphDict.Lookup(String("value"), Value::zero).IntValue();
+			glyphs[i].offsetX = glyphDict.Lookup(String("offsetX"), Value::zero).IntValue();
+			glyphs[i].offsetY = glyphDict.Lookup(String("offsetY"), Value::zero).IntValue();
+			glyphs[i].advanceX = glyphDict.Lookup(String("advanceX"), Value::zero).IntValue();
+			glyphs[i].image = ValueToImage(glyphDict.Lookup(String("image"), Value::null));
+
+			recs[i] = ValueToRectangle(recsList[i]);
+		}
+
+		// GenImageFontAtlas modifies the recs array, so we need to pass a pointer
+		Rectangle** recsPtr = new Rectangle*;
+		*recsPtr = recs;
+
+		Image atlas = GenImageFontAtlas(glyphs, recsPtr, glyphCount, fontSize, padding, packMethod);
+
+		delete[] glyphs;
+		delete[] *recsPtr;
+		delete recsPtr;
+
+		return IntrinsicResult(ImageToValue(atlas));
+	};
+	raylibModule.SetValue("GenImageFontAtlas", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("args", Value(ValueList()));
+	i->code = INTRINSIC_LAMBDA {
+		String text = context->GetVar(String("text")).ToString();
+		ValueList args = context->GetVar(String("args")).GetList();
+
+		// Simple implementation: replace %s, %d, %f with args in order
+		std::string result = text.c_str();
+		int argIndex = 0;
+
+		for (size_t i = 0; i < result.length() - 1 && argIndex < args.Count(); i++) {
+			if (result[i] == '%') {
+				char specifier = result[i + 1];
+				std::string replacement;
+
+				if (specifier == 's') {
+					replacement = args[argIndex].ToString().c_str();
+					argIndex++;
+				} else if (specifier == 'd' || specifier == 'i') {
+					char buf[32];
+					snprintf(buf, sizeof(buf), "%d", args[argIndex].IntValue());
+					replacement = buf;
+					argIndex++;
+				} else if (specifier == 'f') {
+					char buf[32];
+					snprintf(buf, sizeof(buf), "%f", args[argIndex].FloatValue());
+					replacement = buf;
+					argIndex++;
+				} else if (specifier == '%') {
+					replacement = "%";
+				} else {
+					continue;
+				}
+
+				result.replace(i, 2, replacement);
+				i += replacement.length() - 1;
+			}
+		}
+
+		return IntrinsicResult(Value(String(result.c_str())));
+	};
+	raylibModule.SetValue("TextFormat", i->GetFunc());
 }
