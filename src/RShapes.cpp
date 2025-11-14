@@ -749,6 +749,7 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("DrawLineBezier", i->GetFunc());
 
+#if RAYLIB_VERSION_GT(5, 5)
 	i = Intrinsic::Create("");
 	i->AddParam("startPos");
 	i->AddParam("endPos");
@@ -765,6 +766,7 @@ void AddRShapesMethods(ValueDict raylibModule) {
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("DrawLineDashed", i->GetFunc());
+#endif /* RAYLIB_VERSION_GT(5, 5) */
 
 	i = Intrinsic::Create("");
 	i->AddParam("points");

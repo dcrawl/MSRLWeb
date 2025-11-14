@@ -753,12 +753,14 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("SetClipboardText", i->GetFunc());
 
+#if RAYLIB_VERSION_GT(5, 5) || !defined(PLATFORM_WEB) // raylib 5.5 doesn't support GetClipboardImage on web
 	i = Intrinsic::Create("");
 	i->code = INTRINSIC_LAMBDA {
 		Image image = GetClipboardImage();
 		return IntrinsicResult(ImageToValue(image));
 	};
 	raylibModule.SetValue("GetClipboardImage", i->GetFunc());
+#endif /* RAYLIB_VERSION_GT(5, 5) || !defined(PLATFORM_WEB) */
 
 	i = Intrinsic::Create("");
 	i->AddParam("fileName");
