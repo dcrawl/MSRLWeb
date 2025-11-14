@@ -614,6 +614,84 @@ void AddRCoreMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("EndMode2D", i->GetFunc());
 
+	i = Intrinsic::Create("");
+	i->AddParam("camera");
+	i->code = INTRINSIC_LAMBDA {
+		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+		Camera2D camera;
+		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+
+		Matrix mat = GetCameraMatrix2D(camera);
+		ValueDict result;
+		result.SetValue(String("m0"), Value(mat.m0));
+		result.SetValue(String("m1"), Value(mat.m1));
+		result.SetValue(String("m2"), Value(mat.m2));
+		result.SetValue(String("m3"), Value(mat.m3));
+		result.SetValue(String("m4"), Value(mat.m4));
+		result.SetValue(String("m5"), Value(mat.m5));
+		result.SetValue(String("m6"), Value(mat.m6));
+		result.SetValue(String("m7"), Value(mat.m7));
+		result.SetValue(String("m8"), Value(mat.m8));
+		result.SetValue(String("m9"), Value(mat.m9));
+		result.SetValue(String("m10"), Value(mat.m10));
+		result.SetValue(String("m11"), Value(mat.m11));
+		result.SetValue(String("m12"), Value(mat.m12));
+		result.SetValue(String("m13"), Value(mat.m13));
+		result.SetValue(String("m14"), Value(mat.m14));
+		result.SetValue(String("m15"), Value(mat.m15));
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("GetCameraMatrix2D", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("position");
+	i->AddParam("camera");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context->GetVar(String("position")));
+		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+		Camera2D camera;
+		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+
+		Vector2 result = GetWorldToScreen2D(position, camera);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetWorldToScreen2D", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("position");
+	i->AddParam("camera");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 position = ValueToVector2(context->GetVar(String("position")));
+		ValueDict cameraMap = context->GetVar(String("camera")).GetDict();
+		Camera2D camera;
+		camera.offset.x = cameraMap.Lookup(String("offsetX"), Value::zero).FloatValue();
+		camera.offset.y = cameraMap.Lookup(String("offsetY"), Value::zero).FloatValue();
+		camera.target.x = cameraMap.Lookup(String("targetX"), Value::zero).FloatValue();
+		camera.target.y = cameraMap.Lookup(String("targetY"), Value::zero).FloatValue();
+		camera.rotation = cameraMap.Lookup(String("rotation"), Value::zero).FloatValue();
+		camera.zoom = cameraMap.Lookup(String("zoom"), Value::one).FloatValue();
+
+		Vector2 result = GetScreenToWorld2D(position, camera);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetScreenToWorld2D", i->GetFunc());
+
 	// Blend mode functions
 
 	i = Intrinsic::Create("");
@@ -675,6 +753,13 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("SetClipboardText", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		Image image = GetClipboardImage();
+		return IntrinsicResult(ImageToValue(image));
+	};
+	raylibModule.SetValue("GetClipboardImage", i->GetFunc());
 
 	i = Intrinsic::Create("");
 	i->AddParam("fileName");
@@ -750,6 +835,47 @@ void AddRCoreMethods(ValueDict raylibModule) {
 		return IntrinsicResult(ret);
 	};
 	raylibModule.SetValue("LoadFileText", i->GetFunc());
+
+	// Random number generation
+	i = Intrinsic::Create("");
+	i->AddParam("seed");
+	i->code = INTRINSIC_LAMBDA {
+		unsigned int seed = (unsigned int)context->GetVar(String("seed")).IntValue();
+		SetRandomSeed(seed);
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("SetRandomSeed", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("min");
+	i->AddParam("max");
+	i->code = INTRINSIC_LAMBDA {
+		int min = context->GetVar(String("min")).IntValue();
+		int max = context->GetVar(String("max")).IntValue();
+		return IntrinsicResult(GetRandomValue(min, max));
+	};
+	raylibModule.SetValue("GetRandomValue", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("count");
+	i->AddParam("min");
+	i->AddParam("max");
+	i->code = INTRINSIC_LAMBDA {
+		unsigned int count = (unsigned int)context->GetVar(String("count")).IntValue();
+		int min = context->GetVar(String("min")).IntValue();
+		int max = context->GetVar(String("max")).IntValue();
+
+		int* sequence = LoadRandomSequence(count, min, max);
+		if (sequence == nullptr) return IntrinsicResult(Value::null);
+
+		ValueList result;
+		for (unsigned int i = 0; i < count; i++) {
+			result.Add(Value(sequence[i]));
+		}
+		UnloadRandomSequence(sequence);
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("LoadRandomSequence", i->GetFunc());
 
 	// Logging and tracing
 	i = Intrinsic::Create("");

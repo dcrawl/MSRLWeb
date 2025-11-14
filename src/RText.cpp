@@ -675,4 +675,230 @@ void AddRTextMethods(ValueDict raylibModule) {
 		return IntrinsicResult(Value(String(result.c_str())));
 	};
 	raylibModule.SetValue("TextFormat", i->GetFunc());
+
+	// Text manipulation functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("search");
+	i->code = INTRINSIC_LAMBDA {
+		const char* text = context->GetVar(String("text")).ToString().c_str();
+		const char* search = context->GetVar(String("search")).ToString().c_str();
+		int result = TextFindIndex(text, search);
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("TextFindIndex", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("begin");
+	i->AddParam("end");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String beginStr = context->GetVar(String("begin")).ToString();
+		String endStr = context->GetVar(String("end")).ToString();
+		char* result = GetTextBetween(textStr.c_str(), beginStr.c_str(), endStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("GetTextBetween", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("search");
+	i->AddParam("replacement");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String searchStr = context->GetVar(String("search")).ToString();
+		String replacementStr = context->GetVar(String("replacement")).ToString();
+		char* result = TextReplace(textStr.c_str(), searchStr.c_str(), replacementStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextReplace", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("begin");
+	i->AddParam("end");
+	i->AddParam("replacement");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String beginStr = context->GetVar(String("begin")).ToString();
+		String endStr = context->GetVar(String("end")).ToString();
+		String replacementStr = context->GetVar(String("replacement")).ToString();
+		char* result = TextReplaceBetween(textStr.c_str(), beginStr.c_str(), endStr.c_str(), replacementStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextReplaceBetween", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("insert");
+	i->AddParam("position");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String insertStr = context->GetVar(String("insert")).ToString();
+		int position = context->GetVar(String("position")).IntValue();
+		char* result = TextInsert(textStr.c_str(), insertStr.c_str(), position);
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextInsert", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("delimiter");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String delimiterStr = context->GetVar(String("delimiter")).ToString();
+		if (delimiterStr.LengthB() == 0) return IntrinsicResult(Value::null);
+
+		char delimiter = delimiterStr.data()[0];
+		int count = 0;
+		char** parts = TextSplit(textStr.c_str(), delimiter, &count);
+
+		ValueList result;
+		for (int i = 0; i < count; i++) {
+			result.Add(Value(String(parts[i])));
+		}
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("TextSplit", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("textList");
+	i->AddParam("delimiter", "");
+	i->code = INTRINSIC_LAMBDA {
+		ValueList textList = context->GetVar(String("textList")).GetList();
+		String delimiterStr = context->GetVar(String("delimiter")).ToString();
+
+		int count = textList.Count();
+		if (count == 0) return IntrinsicResult(String());
+
+		char** parts = new char*[count];
+		for (int i = 0; i < count; i++) {
+			String str = textList[i].ToString();
+			parts[i] = (char*)str.c_str();
+		}
+
+		char* result = TextJoin(parts, count, delimiterStr.c_str());
+		String ret(result);
+		MemFree(result);
+		delete[] parts;
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextJoin", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->AddParam("append");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		String appendStr = context->GetVar(String("append")).ToString();
+		// In MiniScript, we just return the concatenated string
+		String result = textStr + appendStr;
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("TextAppend", i->GetFunc());
+
+	// Text case conversion functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		char* result = TextToUpper(textStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextToUpper", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		char* result = TextToLower(textStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextToLower", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		char* result = TextToPascal(textStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextToPascal", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		char* result = TextToSnake(textStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextToSnake", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		char* result = TextToCamel(textStr.c_str());
+		String ret(result);
+		MemFree(result);
+		return IntrinsicResult(ret);
+	};
+	raylibModule.SetValue("TextToCamel", i->GetFunc());
+
+	// Text to value conversion functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		const char* text = context->GetVar(String("text")).ToString().c_str();
+		int result = TextToInteger(text);
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("TextToInteger", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		const char* text = context->GetVar(String("text")).ToString().c_str();
+		float result = TextToFloat(text);
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("TextToFloat", i->GetFunc());
+
+	// Text line loading functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("text");
+	i->code = INTRINSIC_LAMBDA {
+		String textStr = context->GetVar(String("text")).ToString();
+		int count = 0;
+		char** lines = LoadTextLines(textStr.c_str(), &count);
+
+		ValueList result;
+		for (int i = 0; i < count; i++) {
+			result.Add(Value(String(lines[i])));
+		}
+		UnloadTextLines(lines, count);
+		return IntrinsicResult(result);
+	};
+	raylibModule.SetValue("LoadTextLines", i->GetFunc());
 }

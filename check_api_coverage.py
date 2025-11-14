@@ -11,8 +11,11 @@ from pathlib import Path
 from collections import defaultdict
 
 # Map raylib module names to our source files
+# Note: rgestures and rcamera are treated as part of core
 MODULE_FILES = {
     'core': 'src/RCore.cpp',
+    'rgestures': 'src/RCore.cpp',
+    'rcamera': 'src/RCore.cpp',
     'shapes': 'src/RShapes.cpp',
     'textures': 'src/RTextures.cpp',
     'text': 'src/RText.cpp',
@@ -93,31 +96,49 @@ def main():
     total_wrapped = 0
     total_missing = 0
 
-    # Check each module
-    for module, module_file in sorted(MODULE_FILES.items()):
+    # Group modules by their implementation file
+    file_to_modules = defaultdict(list)
+    for module, file_path in MODULE_FILES.items():
+        file_to_modules[file_path].append(module)
+
+    # Check each unique module file
+    for module_file, modules in sorted(file_to_modules.items()):
         module_file_path = Path(module_file)
 
-        print(f"Module: {module.upper()}")
+        # Combine module names for display
+        if len(modules) == 1:
+            display_name = modules[0].upper()
+        else:
+            display_name = " + ".join(m.upper() for m in sorted(modules))
+
+        print(f"Module: {display_name}")
         print("-" * 80)
 
-        raylib_funcs = raylib_apis.get(module, set())
+        # Combine raylib funcs from all modules that map to this file
+        raylib_funcs = set()
+        for module in modules:
+            raylib_funcs.update(raylib_apis.get(module, set()))
+
         wrapped_funcs = extract_wrapped_apis(module_file_path) if module_file_path.exists() else set()
         missing_funcs = raylib_funcs - wrapped_funcs
 
+        # Count wrapped functions that are in raylib (don't count custom functions)
+        valid_wrapped = raylib_funcs & wrapped_funcs
+
         total_raylib += len(raylib_funcs)
-        total_wrapped += len(wrapped_funcs)
+        total_wrapped += len(valid_wrapped)
         total_missing += len(missing_funcs)
 
         print(f"Raylib APIs found: {len(raylib_funcs)}")
-        print(f"APIs wrapped: {len(wrapped_funcs)}")
+        print(f"APIs wrapped: {len(valid_wrapped)}")
         print(f"APIs missing: {len(missing_funcs)}")
 
         if missing_funcs:
-            print(f"\nMissing APIs in {module}:")
+            print(f"\nMissing APIs:")
             for func in sorted(missing_funcs):
                 print(f"  - {func}")
         else:
-            print(f"\n✓ All {module} APIs are wrapped!")
+            print(f"\n✓ All APIs are wrapped!")
 
         # Also report wrapped APIs not found in raylib.h (possibly deprecated or custom)
         extra_funcs = wrapped_funcs - raylib_funcs

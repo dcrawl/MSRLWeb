@@ -749,6 +749,23 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	raylibModule.SetValue("DrawLineBezier", i->GetFunc());
 
 	i = Intrinsic::Create("");
+	i->AddParam("startPos");
+	i->AddParam("endPos");
+	i->AddParam("dashSize");
+	i->AddParam("spaceSize");
+	i->AddParam("color", ColorToValue(WHITE));
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 startPos = ValueToVector2(context->GetVar(String("startPos")));
+		Vector2 endPos = ValueToVector2(context->GetVar(String("endPos")));
+		int dashSize = context->GetVar(String("dashSize")).IntValue();
+		int spaceSize = context->GetVar(String("spaceSize")).IntValue();
+		Color color = ValueToColor(context->GetVar(String("color")));
+		DrawLineDashed(startPos, endPos, dashSize, spaceSize, color);
+		return IntrinsicResult::Null;
+	};
+	raylibModule.SetValue("DrawLineDashed", i->GetFunc());
+
+	i = Intrinsic::Create("");
 	i->AddParam("points");
 	i->AddParam("color", ColorToValue(WHITE));
 	i->code = INTRINSIC_LAMBDA {
@@ -990,6 +1007,102 @@ void AddRShapesMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("DrawSplineSegmentBezierCubic", i->GetFunc());
 
+	// Spline point evaluation functions
+
+	i = Intrinsic::Create("");
+	i->AddParam("startPos");
+	i->AddParam("endPos");
+	i->AddParam("t");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 startPos = ValueToVector2(context->GetVar(String("startPos")));
+		Vector2 endPos = ValueToVector2(context->GetVar(String("endPos")));
+		float t = context->GetVar(String("t")).FloatValue();
+		Vector2 result = GetSplinePointLinear(startPos, endPos, t);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetSplinePointLinear", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("p1");
+	i->AddParam("p2");
+	i->AddParam("p3");
+	i->AddParam("p4");
+	i->AddParam("t");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 p1 = ValueToVector2(context->GetVar(String("p1")));
+		Vector2 p2 = ValueToVector2(context->GetVar(String("p2")));
+		Vector2 p3 = ValueToVector2(context->GetVar(String("p3")));
+		Vector2 p4 = ValueToVector2(context->GetVar(String("p4")));
+		float t = context->GetVar(String("t")).FloatValue();
+		Vector2 result = GetSplinePointBasis(p1, p2, p3, p4, t);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetSplinePointBasis", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("p1");
+	i->AddParam("p2");
+	i->AddParam("p3");
+	i->AddParam("p4");
+	i->AddParam("t");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 p1 = ValueToVector2(context->GetVar(String("p1")));
+		Vector2 p2 = ValueToVector2(context->GetVar(String("p2")));
+		Vector2 p3 = ValueToVector2(context->GetVar(String("p3")));
+		Vector2 p4 = ValueToVector2(context->GetVar(String("p4")));
+		float t = context->GetVar(String("t")).FloatValue();
+		Vector2 result = GetSplinePointCatmullRom(p1, p2, p3, p4, t);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetSplinePointCatmullRom", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("p1");
+	i->AddParam("c2");
+	i->AddParam("p3");
+	i->AddParam("t");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 p1 = ValueToVector2(context->GetVar(String("p1")));
+		Vector2 c2 = ValueToVector2(context->GetVar(String("c2")));
+		Vector2 p3 = ValueToVector2(context->GetVar(String("p3")));
+		float t = context->GetVar(String("t")).FloatValue();
+		Vector2 result = GetSplinePointBezierQuad(p1, c2, p3, t);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetSplinePointBezierQuad", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->AddParam("p1");
+	i->AddParam("c2");
+	i->AddParam("c3");
+	i->AddParam("p4");
+	i->AddParam("t");
+	i->code = INTRINSIC_LAMBDA {
+		Vector2 p1 = ValueToVector2(context->GetVar(String("p1")));
+		Vector2 c2 = ValueToVector2(context->GetVar(String("c2")));
+		Vector2 c3 = ValueToVector2(context->GetVar(String("c3")));
+		Vector2 p4 = ValueToVector2(context->GetVar(String("p4")));
+		float t = context->GetVar(String("t")).FloatValue();
+		Vector2 result = GetSplinePointBezierCubic(p1, c2, c3, p4, t);
+		ValueDict resultMap;
+		resultMap.SetValue(String("x"), Value(result.x));
+		resultMap.SetValue(String("y"), Value(result.y));
+		return IntrinsicResult(resultMap);
+	};
+	raylibModule.SetValue("GetSplinePointBezierCubic", i->GetFunc());
+
 	// Additional triangle drawing
 
 	i = Intrinsic::Create("");
@@ -1044,4 +1157,18 @@ void AddRShapesMethods(ValueDict raylibModule) {
 		return IntrinsicResult::Null;
 	};
 	raylibModule.SetValue("SetShapesTexture", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		Texture2D texture = GetShapesTexture();
+		return IntrinsicResult(TextureToValue(texture));
+	};
+	raylibModule.SetValue("GetShapesTexture", i->GetFunc());
+
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		Rectangle rect = GetShapesTextureRectangle();
+		return IntrinsicResult(RectangleToValue(rect));
+	};
+	raylibModule.SetValue("GetShapesTextureRectangle", i->GetFunc());
 }

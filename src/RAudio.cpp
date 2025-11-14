@@ -51,6 +51,13 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	};
 	raylibModule.SetValue("SetMasterVolume", i->GetFunc());
 
+	i = Intrinsic::Create("");
+	i->code = INTRINSIC_LAMBDA {
+		float volume = GetMasterVolume();
+		return IntrinsicResult(volume);
+	};
+	raylibModule.SetValue("GetMasterVolume", i->GetFunc());
+
 	// Wave loading
 
 	i = Intrinsic::Create("");
