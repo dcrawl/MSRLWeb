@@ -83,6 +83,86 @@ void AddRAudioMethods(ValueDict raylibModule) {
 	raylibModule.SetValue("LoadWaveFromMemory", i->GetFunc());
 
 	i = Intrinsic::Create("");
+	i->AddParam("frameCount");
+	i->AddParam("sampleRate");
+	i->AddParam("sampleSize");
+	i->AddParam("channels");
+	i->AddParam("samples");
+	i->code = INTRINSIC_LAMBDA {
+		unsigned int frameCount = (unsigned int)context->GetVar(String("frameCount")).IntValue();
+		unsigned int sampleRate = (unsigned int)context->GetVar(String("sampleRate")).IntValue();
+		unsigned int sampleSize = (unsigned int)context->GetVar(String("sampleSize")).IntValue();
+		unsigned int channels = (unsigned int)context->GetVar(String("channels")).IntValue();
+		Value samplesVal = context->GetVar(String("samples"));
+
+		// Validate parameters
+		if (sampleSize != 8 && sampleSize != 16 && sampleSize != 32) {
+			return IntrinsicResult::Null;  // Invalid sample size
+		}
+		if (channels < 1) return IntrinsicResult::Null;
+
+		// Calculate required buffer size
+		unsigned int bytesPerSample = sampleSize / 8;
+		unsigned int totalSamples = frameCount * channels;
+		unsigned int bufferSize = totalSamples * bytesPerSample;
+
+		void* data = nullptr;
+
+		// Handle RawData case
+		if (samplesVal.type == ValueType::Map) {
+			BinaryData* rawData = ValueToRawData(samplesVal);
+			if (rawData != nullptr && rawData->length == bufferSize) {
+				// Copy the data from RawData
+				data = MemAlloc(bufferSize);
+				memcpy(data, rawData->bytes, bufferSize);
+			} else {
+				return IntrinsicResult::Null;  // Size mismatch or invalid RawData
+			}
+		}
+		// Handle list case
+		else if (samplesVal.type == ValueType::List) {
+			ValueList samplesList = samplesVal.GetList();
+			if (samplesList.Count() != (int)totalSamples) {
+				return IntrinsicResult::Null;  // Wrong number of samples
+			}
+
+			data = MemAlloc(bufferSize);
+
+			if (sampleSize == 8) {
+				unsigned char* bytes = (unsigned char*)data;
+				for (int i = 0; i < (int)totalSamples; i++) {
+					bytes[i] = (unsigned char)samplesList[i].IntValue();
+				}
+			} else if (sampleSize == 16) {
+				short* shorts = (short*)data;
+				for (int i = 0; i < (int)totalSamples; i++) {
+					shorts[i] = (short)samplesList[i].IntValue();
+				}
+			} else if (sampleSize == 32) {
+				float* floats = (float*)data;
+				for (int i = 0; i < (int)totalSamples; i++) {
+					floats[i] = samplesList[i].FloatValue();
+				}
+			}
+		} else {
+			return IntrinsicResult::Null;  // Invalid samples parameter
+		}
+
+		if (data == nullptr) return IntrinsicResult::Null;
+
+		// Create the Wave structure
+		Wave wave;
+		wave.frameCount = frameCount;
+		wave.sampleRate = sampleRate;
+		wave.sampleSize = sampleSize;
+		wave.channels = channels;
+		wave.data = data;
+
+		return IntrinsicResult(WaveToValue(wave));
+	};
+	raylibModule.SetValue("CreateWave", i->GetFunc());
+
+	i = Intrinsic::Create("");
 	i->AddParam("wave");
 	i->code = INTRINSIC_LAMBDA {
 		Wave wave = ValueToWave(context->GetVar(String("wave")));

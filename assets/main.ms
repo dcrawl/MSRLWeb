@@ -148,6 +148,14 @@ end function
 buttons.push btn
 y += dy
 
+btn = Button.Make("Sounds", x, y)
+btn.action = function
+	import "sounds"
+	sounds.run
+end function
+buttons.push btn
+y += dy
+
 // Main loop
 while true
 	// update stuff

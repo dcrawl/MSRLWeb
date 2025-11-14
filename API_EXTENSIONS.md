@@ -6,6 +6,7 @@ This document describes features in MSRLWeb that extend or differ from the stand
 - [Default Parameters](#default-parameters)
 - [Flexible Parameter Formats](#flexible-paramater-formats)
 - [Codepoints Parameter Enhancement](#codepoints-parameter-enhancement)
+- [Procedural Audio Generation](#procedural-audio-generation)
 - [MiniScript-Specific Classes](#miniscript-specific-classes)
 
 ---
@@ -157,6 +158,122 @@ font = raylib.LoadFontEx("myfont.ttf", 32, "こんにちは世界")
 raylib.DrawTextCodepoints(font, "Hello", {x: 100, y: 100}, 32, 2, raylib.WHITE)
 ```
 
+
+---
+
+## Procedural Audio Generation
+
+### CreateWave Function
+
+MSRLWeb provides `CreateWave` to generate Wave structures from raw sample data. This function doesn't exist in standard Raylib because C programs can directly construct Wave structs, but MiniScript cannot.
+
+**Function:**
+```miniscript
+wave = raylib.CreateWave(frameCount, sampleRate, sampleSize, channels, samples)
+```
+
+**Parameters:**
+- `frameCount` - Number of frames (samples per channel)
+- `sampleRate` - Sample rate in Hz (e.g., 44100, 22050, 11025, 8000)
+- `sampleSize` - Bits per sample: 8, 16, or 32
+- `channels` - Number of channels: 1 (mono) or 2 (stereo)
+- `samples` - Sample data (see below)
+
+**Sample Formats and Value Ranges:**
+
+| Sample Size | Type | Value Range | Center (Silence) |
+|------------|------|-------------|------------------|
+| 8-bit | Unsigned byte | 0 to 255 | 128 |
+| 16-bit | Signed short | -32768 to 32767 | 0 |
+| 32-bit | Float | -1.0 to 1.0 | 0.0 |
+
+**Sample Data Parameter:**
+
+The `samples` parameter accepts either:
+
+1. **List of numbers** - Values matching the sample format above
+2. **RawData object** - Binary buffer with exact size = `frameCount × channels × (sampleSize/8)` bytes
+
+**Common Retro Sample Rates:**
+
+For classic 8-bit/chiptune style sounds:
+- **8000 Hz** - Very crunchy, telephone quality
+- **11025 Hz** - Quarter of CD quality, classic DOS-era games (recommended)
+- **22050 Hz** - Half of CD quality, good balance
+
+**Example: Generate a 261 Hz Square Wave (Middle C)**
+
+Using a list (simpler, good for short sounds):
+```miniscript
+// Initialize audio
+raylib.InitAudioDevice
+
+// Parameters for retro-style square wave
+sampleRate = 11025  // Classic game sound
+duration = 0.5      // Half second
+frequency = 261     // Middle C
+frameCount = sampleRate * duration
+
+// Generate 8-bit square wave samples
+samples = []
+samplesPerCycle = sampleRate / frequency
+for i in range(0, frameCount - 1)
+    posInCycle = i % samplesPerCycle
+    if posInCycle < samplesPerCycle / 2 then
+        samples.push 192  // High (128 + 64)
+    else
+        samples.push 64   // Low (128 - 64)
+    end if
+end for
+
+// Create wave and sound
+wave = raylib.CreateWave(frameCount, sampleRate, 8, 1, samples)
+sound = raylib.LoadSoundFromWave(wave)
+
+// Play it whenever needed
+raylib.PlaySound(sound)
+
+// Cleanup when done
+raylib.UnloadSound(sound)
+raylib.UnloadWave(wave)
+raylib.CloseAudioDevice
+```
+
+Using RawData (more efficient for large sounds):
+```miniscript
+// Create RawData buffer (4 bytes per float sample for 32-bit)
+frameCount = 11025 * 0.5
+data = RawData.make(frameCount * 4)
+
+// Generate 32-bit float samples directly into buffer
+sampleRate = 11025
+frequency = 261
+samplesPerCycle = sampleRate / frequency
+
+for i in range(0, frameCount - 1)
+    posInCycle = i % samplesPerCycle
+    if posInCycle < samplesPerCycle / 2 then
+        data.setFloat(i * 4, 0.5)   // High
+    else
+        data.setFloat(i * 4, -0.5)  // Low
+    end if
+end for
+
+// Create wave from RawData
+wave = raylib.CreateWave(frameCount, sampleRate, 32, 1, data)
+sound = raylib.LoadSoundFromWave(wave)
+raylib.PlaySound(sound)
+```
+
+**For Smoother Tones (Sine Wave):**
+```miniscript
+// Generate sine wave instead of square wave
+for i in range(0, frameCount - 1)
+    t = i / sampleRate
+    sample = sin(2 * pi * frequency * t) * 0.5
+    data.setFloat(i * 4, sample)
+end for
+```
 
 ---
 

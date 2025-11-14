@@ -1,6 +1,7 @@
 import "listUtil"
 import "mathUtil"
 import "Sprite"
+import "sounds"
 
 spriteSheetTex = raylib.LoadTexture("assets/Asteroids-2X.png")
 
@@ -43,16 +44,23 @@ end function
 //----------------------------------------------------------------------
 
 Sound = {}
+Sound.sound = null  // a Raylib sound, if you have one
 Sound.play = function(volume=1, pan=0, speed=1)
-	// ToDo
+	if not self.sound then return
+	raylib.SetSoundVolume self.sound, volume
+	raylib.SetSoundPan self.sound, -pan // (because Raylib pan is backwards!)
+	raylib.SetSoundPitch self.sound, speed
+	raylib.PlaySound self.sound
 end function
 Sound.stop = function
-	// ToDo
+	if self.sound then raylib.StopSound self.sound
 end function
 
 pew = new Sound
+pew.sound = sounds.pew
 bipBoop = [new Sound, new Sound]
 hit = new Sound
+hit.sound = sounds.boom
 engineNoise = new Sound
 ufoSound = new Sound
 

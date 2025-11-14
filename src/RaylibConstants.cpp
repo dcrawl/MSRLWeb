@@ -13,22 +13,33 @@
 using namespace MiniScript;
 
 void AddConstants(ValueDict raylibModule) {
-	// Add color constants
-	raylibModule.SetValue("WHITE", ColorToValue(WHITE));
-	raylibModule.SetValue("BLACK", ColorToValue(BLACK));
-	raylibModule.SetValue("RED", ColorToValue(RED));
-	raylibModule.SetValue("GREEN", ColorToValue(GREEN));
-	raylibModule.SetValue("BLUE", ColorToValue(BLUE));
-	raylibModule.SetValue("YELLOW", ColorToValue(YELLOW));
-	raylibModule.SetValue("ORANGE", ColorToValue(ORANGE));
-	raylibModule.SetValue("PINK", ColorToValue(PINK));
-	raylibModule.SetValue("MAGENTA", ColorToValue(MAGENTA));
-	raylibModule.SetValue("RAYWHITE", ColorToValue(RAYWHITE));
+	// Add color constants (all colors from raylib.h)
+	raylibModule.SetValue("LIGHTGRAY", ColorToValue(LIGHTGRAY));
 	raylibModule.SetValue("GRAY", ColorToValue(GRAY));
 	raylibModule.SetValue("DARKGRAY", ColorToValue(DARKGRAY));
-	raylibModule.SetValue("LIGHTGRAY", ColorToValue(LIGHTGRAY));
+	raylibModule.SetValue("YELLOW", ColorToValue(YELLOW));
+	raylibModule.SetValue("GOLD", ColorToValue(GOLD));
+	raylibModule.SetValue("ORANGE", ColorToValue(ORANGE));
+	raylibModule.SetValue("PINK", ColorToValue(PINK));
+	raylibModule.SetValue("RED", ColorToValue(RED));
+	raylibModule.SetValue("MAROON", ColorToValue(MAROON));
+	raylibModule.SetValue("GREEN", ColorToValue(GREEN));
+	raylibModule.SetValue("LIME", ColorToValue(LIME));
+	raylibModule.SetValue("DARKGREEN", ColorToValue(DARKGREEN));
 	raylibModule.SetValue("SKYBLUE", ColorToValue(SKYBLUE));
+	raylibModule.SetValue("BLUE", ColorToValue(BLUE));
 	raylibModule.SetValue("DARKBLUE", ColorToValue(DARKBLUE));
+	raylibModule.SetValue("PURPLE", ColorToValue(PURPLE));
+	raylibModule.SetValue("VIOLET", ColorToValue(VIOLET));
+	raylibModule.SetValue("DARKPURPLE", ColorToValue(DARKPURPLE));
+	raylibModule.SetValue("BEIGE", ColorToValue(BEIGE));
+	raylibModule.SetValue("BROWN", ColorToValue(BROWN));
+	raylibModule.SetValue("DARKBROWN", ColorToValue(DARKBROWN));
+	raylibModule.SetValue("WHITE", ColorToValue(WHITE));
+	raylibModule.SetValue("BLACK", ColorToValue(BLACK));
+	raylibModule.SetValue("BLANK", ColorToValue(BLANK));
+	raylibModule.SetValue("MAGENTA", ColorToValue(MAGENTA));
+	raylibModule.SetValue("RAYWHITE", ColorToValue(RAYWHITE));
 
 	// Add keyboard key constants
 	raylibModule.SetValue("KEY_NULL", Value(KEY_NULL));
