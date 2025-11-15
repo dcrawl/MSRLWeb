@@ -183,4 +183,5 @@ while true
 	rl.DrawFPS
 
 	rl.EndDrawing
+	yield
 end while
