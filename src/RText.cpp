@@ -267,9 +267,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 		float fontSize = context->GetVar(String("fontSize")).FloatValue();
 		float spacing = context->GetVar(String("spacing")).FloatValue();
 		Vector2 size = MeasureTextEx(font, text.c_str(), fontSize, spacing);
-		ValueDict result;
-		result.SetValue(String("x"), Value(size.x));
-		result.SetValue(String("y"), Value(size.y));
+		Value result = Vector2ToValue(size);
 		return IntrinsicResult(Value(result));
 	};
 	raylibModule.SetValue("MeasureTextEx", i->GetFunc());
@@ -774,7 +772,7 @@ void AddRTextMethods(ValueDict raylibModule) {
 
 		char delimiter = delimiterStr.data()[0];
 		int count = 0;
-		const char** parts = TextSplit(textStr.c_str(), delimiter, &count);
+		const char** parts = (const char**)TextSplit(textStr.c_str(), delimiter, &count);
 
 		ValueList result;
 		for (int i = 0; i < count; i++) {

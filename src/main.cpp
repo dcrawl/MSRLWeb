@@ -251,7 +251,7 @@ static IntrinsicResult intrinsic_import(Context *context, IntrinsicResult partia
 //--------------------------------------------------------------------------------
 
 void InitMiniScript() {
-	MiniScript::hostVersion = 0.2;
+	MiniScript::hostVersion = 0.3;
 	MiniScript::hostName = "MSRLWeb";
 	MiniScript::hostInfo = "https://github.com/JoeStrout/MSRLWeb";
 
